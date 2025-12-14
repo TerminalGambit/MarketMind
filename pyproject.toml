@@ -1,0 +1,26 @@
+[project]
+name = "market-mind"
+version = "0.1.0"
+description = "A Knowledge Graph & Quant Copilot for financial analysis"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "pandas",
+    "networkx",
+    "selenium",
+    "matplotlib",
+    "seaborn",
+    "scikit-learn",
+    "torch",
+    "ollama",
+    "yfinance",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["market_mind/tests"]
+section = "market-mind"

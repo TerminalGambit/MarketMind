@@ -1,0 +1,31 @@
+name: market_mind
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - numpy
+  - pandas
+  - networkx
+  - matplotlib
+  - seaborn
+  - scikit-learn
+  - pytorch
+  - torchvision
+  - torchaudio
+  - jupyter
+  - ipykernel
+  - pip
+  - pip:
+    - yfinance
+    - selenium
+    - webdriver-manager
+    - pyarrow
+    - fastparquet
+    - pyvis
+    - questionary
+    - questionary
+    - vaderSentiment
+    - ollama
+    - manim
