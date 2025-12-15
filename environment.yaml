@@ -29,3 +29,5 @@ dependencies:
     - vaderSentiment
     - ollama
     - manim
+    - arch
+    - cvxpy

@@ -4,15 +4,17 @@ import scipy.optimize as sco
 import matplotlib.pyplot as plt
 from pathlib import Path
 
+from src.config import DATA_PATHS, MARKET_PARAMS
+
 class PortfolioOptimizer:
     """
     Phase 5: Modern Portfolio Theory (MPT) Engine.
     Calculates Efficient Frontier and Optimal Weights.
     """
-    def __init__(self, silver_path: str = "market_mind/data/silver", gold_path: str = "market_mind/data/gold"):
-        self.silver_path = Path(silver_path)
-        self.gold_path = Path(gold_path)
-        self.rf_rate = 0.04 # Risk Free Rate (4%)
+    def __init__(self, silver_path: str = None, gold_path: str = None):
+        self.silver_path = Path(silver_path) if silver_path else DATA_PATHS["silver"]
+        self.gold_path = Path(gold_path) if gold_path else DATA_PATHS["gold"]
+        self.rf_rate = MARKET_PARAMS["RISK_FREE_RATE"]
 
     def load_returns(self):
         files = list(self.silver_path.glob("market_returns_*.parquet"))
@@ -32,11 +34,10 @@ class PortfolioOptimizer:
         p_ret, p_std = self.portfolio_performance(weights, mean_returns, cov_matrix)
         return - (p_ret - rf_rate) / p_std
 
-    def optimize(self):
-        print("Running Mean-Variance Optimization...")
-        df = self.load_returns()
-        
-        # Data Stats
+    def get_max_sharpe_weights(self, df: pd.DataFrame) -> pd.Series:
+        """
+        Calculates optimal weights maximizing Sharpe Ratio.
+        """
         mean_returns = df.mean()
         cov_matrix = df.cov()
         num_assets = len(mean_returns)
@@ -47,12 +48,25 @@ class PortfolioOptimizer:
         bounds = tuple((0.0, 1.0) for asset in range(num_assets))
         init_guess = num_assets * [1. / num_assets,]
         
-        # Max Sharpe Optimization
-        print("Maximizing Sharpe Ratio...")
         opts = sco.minimize(self.neg_sharpe_ratio, init_guess, args=(mean_returns, cov_matrix, self.rf_rate),
                             method='SLSQP', bounds=bounds, constraints=constraints)
         
-        opt_weights = opts.x
+        return pd.Series(opts.x, index=tickers)
+
+    def optimize(self):
+        print("Running Mean-Variance Optimization...")
+        df = self.load_returns()
+        
+        # Calculate Weights
+        print("Maximizing Sharpe Ratio...")
+        opt_weights_series = self.get_max_sharpe_weights(df)
+        opt_weights = opt_weights_series.values
+        tickers = df.columns.tolist()
+        
+        # Performance
+        mean_returns = df.mean()
+        cov_matrix = df.cov()
+        
         opt_ret, opt_std = self.portfolio_performance(opt_weights, mean_returns, cov_matrix)
         opt_sharpe = (opt_ret - self.rf_rate) / opt_std
         

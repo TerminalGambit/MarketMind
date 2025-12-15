@@ -7,13 +7,15 @@ from sklearn.linear_model import Lasso, Ridge
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
 
+from src.config import DATA_PATHS
+
 class EconometricModels:
     """
     Analytics Component: Linear Models & Factor Analysis.
     Uses Lasso (L1) and Ridge (L2) regression to identify drivers of stock returns.
     """
-    def __init__(self, silver_path: str = "market_mind/data/silver"):
-        self.silver_path = Path(silver_path)
+    def __init__(self, silver_path: str = None):
+        self.silver_path = Path(silver_path) if silver_path else DATA_PATHS["silver"]
 
     def load_returns(self) -> pd.DataFrame:
         files = list(self.silver_path.glob("market_returns_*.parquet"))

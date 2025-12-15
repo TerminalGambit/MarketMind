@@ -3,14 +3,15 @@ import pandas as pd
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+from src.config import DATA_PATHS, TICKERS, MARKET_PARAMS
 
 class MarketDataFetcher:
     """
     Fetches raw market data (OHLCV) using yfinance and saves it to the Bronze layer.
     Follows Medallion Architecture: Bronze = Raw, Immutable.
     """
-    def __init__(self, bronze_path: str = "market_mind/data/bronze"):
-        self.bronze_path = Path(bronze_path)
+    def __init__(self, bronze_path: str = None):
+        self.bronze_path = Path(bronze_path) if bronze_path else DATA_PATHS["bronze"]
         self.bronze_path.mkdir(parents=True, exist_ok=True)
 
     def fetch_history(self, tickers: List[str], period: str = "1mo") -> Optional[pd.DataFrame]:
@@ -24,7 +25,7 @@ class MarketDataFetcher:
         Returns:
             pd.DataFrame: The raw data fetched, or None if empty.
         """
-        print(f"Fetching data for {len(tickers)} tickers: {tickers} over {period}...")
+        print(f"Fetching data for {len(tickers)} tickers: {tickers[:5]}... (+{len(tickers)-5} others) over {period}...")
         
         try:
             # auto_adjust=True fixes the FutureWarning and gives us adjusted close by default
@@ -52,21 +53,7 @@ class MarketDataFetcher:
         print(f"Saved raw data to {file_path}")
 
 if __name__ == "__main__":
-    # V1 Scale Up: Diverse Universe (Tech, Finance, Healthcare, Energy, Consumer, Industrial)
-    v1_tickers = [
-        # Tech
-        "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD", "INTC", "CRM", "ADBE", "CSCO",
-        # Finance
-        "JPM", "BAC", "WFC", "C", "GS", "MS", "V", "MA", "AXP", "BLK",
-        # Healthcare
-        "JNJ", "UNH", "PFE", "MRK", "ABBV", "LLY", "TMO", "DHR",
-        # Consumer
-        "PG", "KO", "PEP", "COST", "WMT", "TGT", "HD", "MCD", "NKE", "SBUX",
-        # Communication/Media
-        "DIS", "NFLX", "CMCSA", "TMUS", "VZ", "T",
-        # Industrial/Energy
-        "XOM", "CVX", "BA", "CAT", "GE", "HON", "UPS", "UNP"
-    ]
-    
     fetcher = MarketDataFetcher()
-    fetcher.fetch_history(v1_tickers, period="2y")
+    # Use global config params
+    fetcher.fetch_history(TICKERS, period=MARKET_PARAMS["HISTORY_PERIOD"])
+

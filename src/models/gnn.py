@@ -43,10 +43,12 @@ class MarketGNN(nn.Module):
         # Regression output (predicting next day return)
         return x
 
+from src.config import DATA_PATHS, MODEL_PARAMS
+
 class GNNTrainer:
-    def __init__(self, gold_path: str = "market_mind/data/gold", silver_path: str = "market_mind/data/silver"):
-        self.gold_path = Path(gold_path)
-        self.silver_path = Path(silver_path)
+    def __init__(self, gold_path: str = None, silver_path: str = None):
+        self.gold_path = Path(gold_path) if gold_path else DATA_PATHS["gold"]
+        self.silver_path = Path(silver_path) if silver_path else DATA_PATHS["silver"]
 
     def load_graph(self):
         files = list(self.gold_path.glob("market_graph_*.gexf"))

@@ -109,6 +109,15 @@ class FeatureEngineer:
             feature_frames.append(df_feat)
             
         full_df = pd.concat(feature_frames)
+
+        # Scaling (StandardScaler) for GNN
+        print("Scaling features (Z-Score normalization)...")
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        # Features to scale
+        cols_to_scale = ['RSI', 'MACD', 'BB_Pct', 'Close']
+        full_df[cols_to_scale] = scaler.fit_transform(full_df[cols_to_scale])
+        print("Features scaled.")
         
         # Save enriched data
         timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
