@@ -36,78 +36,124 @@ class GraphVisualizer:
     def generate_viz(self):
         G_nx = self.load_latest_graph()
         
-        # 1. Math Analysis: Get Clusters
-        print("Running Spectral Clustering for visualization colors...")
+        # 1. Advanced Math: Community Detection (Native NetworkX)
+        print("Running Community Detection (Native NetworkX)...")
         try:
-            # We use k=5 for the 5 main sectors we put in Bronze
-            clusters = self.math_core.spectral_clustering(k=5)
-            # Create a dict: Ticker -> ClusterID
-            cluster_map = dict(zip(clusters['Ticker'], clusters['Cluster']))
+            from networkx.algorithms import community as nx_comm
+            # Louvain (Native in NetworkX 3.x+)
+            communities = nx_comm.louvain_communities(G_nx, weight='weight', seed=42)
+            # Convert list of sets to node:id mapping
+            partition = {}
+            for i, comm in enumerate(communities):
+                for node in comm:
+                    partition[node] = i
         except Exception as e:
-            print(f"Clustering failed: {e}. Falling back to default colors.")
-            cluster_map = {}
+            print(f"Native Louvain failed: {e}. Falling back to Greedy Modularity.")
+            try:
+                from networkx.community import greedy_modularity_communities
+                communities = list(greedy_modularity_communities(G_nx))
+                partition = {node: i for i, comm in enumerate(communities) for node in comm}
+            except:
+                partition = {node: 0 for node in G_nx.nodes()}
 
-        # Initialize PyVis Network
-        # cdn_resources='in_line' fixes the "blank screen" issue by embedding JS directly
-        net = Network(height="800px", width="100%", bgcolor="#222222", font_color="white", select_menu=True, cdn_resources="in_line")
+        # 2. Physics & UI Styling
+        net = Network(height="900px", width="100%", bgcolor="#111111", font_color="white", select_menu=True, cdn_resources="in_line")
         
-        # Color Palette for Clusters (Neon/Cyberpunk theme)
-        # 0: Cyber Blue, 1: Neon Green, 2: Hot Pink, 3: Bright Yellow, 4: Electric Purple
-        cluster_colors = ["#00ccff", "#00ff88", "#ff00cc", "#ffff00", "#bf00ff"]
+        # Extended Cyberpunk Color Palette
+        cluster_colors = ["#00ccff", "#00ff88", "#ff00cc", "#ffff00", "#bf00ff", "#ff4400", "#00ffcc", "#ffcc00"]
         
-        print("Adding nodes...")
+        print("Adding nodes with weighted influence...")
         for node, attr in G_nx.nodes(data=True):
             node_type = attr.get('type', 'Unknown')
+            degree = G_nx.degree(node)
             
-            # Styling based on Type & Cluster
+            # Base size on degree (influence)
+            size = 20 + (degree * 2)
+            
+            # Color by Community Partition
+            community_id = partition.get(node, 0)
+            color = cluster_colors[community_id % len(cluster_colors)]
+            
             if node_type == 'Company':
-                if node in cluster_map:
-                    cid = cluster_map[node]
-                    color = cluster_colors[cid % len(cluster_colors)]
-                    title = f"Ticker: {node}\nCluster: {cid}"
-                else:
-                    color = "#ffffff" # Fallback white
-                    title = f"Ticker: {node}"
-                size = 25
+                shape = 'dot'
+                border_width = 2
+                title = f"Ticker: {node}\nCommunity: {community_id}\nConnections: {degree}"
             elif node_type == 'Concept':
-                color = "#bbbbbb" # Grey
-                size = 15
-                title = f"Concept: {node}"
+                shape = 'diamond'
+                color = "#ffdd00" # High contrast for concepts
+                size = 30
+                border_width = 3
+                title = f"Semantic Concept: {node}"
+            elif node_type == 'Sector':
+                shape = 'star'
+                color = "#ffffff"
+                size = 40
+                border_width = 1
+                title = f"Economic Sector: {node}"
             else:
-                color = "gray"
-                size = 10
+                shape = 'ellipse'
+                border_width = 1
                 title = node
                 
-            net.add_node(node, label=node, title=title, color=color, size=size)
+            net.add_node(node, label=node, title=title, color=color, size=size, shape=shape, borderWidth=border_width)
             
-        print("Adding edges...")
+        print("Adding interactive edges...")
         for u, v, attr in G_nx.edges(data=True):
             edge_type = attr.get('type', 'semantic')
             weight = attr.get('weight', 1.0)
             
             if edge_type == 'correlation':
-                color = "#ff4444" # Red for correlation links
-                # Scale width but cap it
-                width = min(weight * 3, 5)
+                color = "rgba(0, 204, 255, 0.4)" # Translucent Cyan
+                width = weight * 4
                 title = f"Correlation: {weight:.2f}"
                 dashed = False
-            else:
-                color = "#aaaaaa" # Semantic
+            elif edge_type == 'part_of':
+                color = "rgba(255, 255, 255, 0.2)" # Subtle white
                 width = 1
-                title = "Semantic Link"
                 dashed = True
+            else:
+                color = "rgba(255, 0, 204, 0.6)" # Neon Pink for semantic
+                width = 2
+                title = "Semantic Link"
+                dashed = False
                 
             net.add_edge(u, v, title=title, color=color, width=width, dashes=dashed)
             
-        # Physics Options
-        net.barnes_hut(gravity=-2000, central_gravity=0.3, spring_length=200, spring_strength=0.05, damping=0.09)
-        # Enable UI controls for physics
-        net.show_buttons(filter_=['physics'])
+        # Physics Enhancements for Stability and Movement
+        net.set_options("""
+        var options = {
+          "nodes": {
+            "font": { "size": 14, "face": "Inter" },
+            "shadow": true
+          },
+          "edges": {
+            "color": { "inherit": true },
+            "smooth": { "type": "continuous", "roundness": 0.5 },
+            "shadow": true
+          },
+          "physics": {
+            "barnesHut": {
+              "gravitationalConstant": -30000,
+              "centralGravity": 0.3,
+              "springLength": 150,
+              "springStrength": 0.05,
+              "damping": 0.09,
+              "avoidOverlap": 0.5
+            },
+            "minVelocity": 0.75
+          },
+          "interaction": {
+            "hover": true,
+            "navigationButtons": true,
+            "tooltipDelay": 100
+          }
+        }
+        """)
         
         # Save
-        print(f"Saving interactive graph to {self.output_path}...")
+        print(f"Saving premium interactive graph to {self.output_path}...")
         net.save_graph(str(self.output_path))
-        print("Done! Open 'interactive_dashboard.html' to explore.")
+        print("Visualization Complete!")
 
 if __name__ == "__main__":
     viz = GraphVisualizer()
